@@ -22,7 +22,86 @@ This project demonstrates how to consume a SOAP web service using Spring Boot. I
 - JAXB for XML binding
 - Lombok for reducing boilerplate code
 
-## Setup
+## Setup and Configuration
+
+### 1. **SOAP Client Configuration**
+
+The SOAP client is configured in the `SoapClientConfig.java` class. The `Jaxb2Marshaller` is used to marshal and unmarshal XML objects to and from Java objects. We use a `WebServiceTemplate` to send SOAP requests.
+
+```java
+@Bean
+public Jaxb2Marshaller marshaller() {
+    Jaxb2Marshaller marshaller = new Jaxb2Marshaller();
+    marshaller.setPackagesToScan("com.example.soap.generated.calculator");
+    return marshaller;
+}
+
+@Bean
+public WebServiceTemplate webServiceTemplate(Jaxb2Marshaller marshaller) {
+    WebServiceTemplate webServiceTemplate = new WebServiceTemplate();
+    webServiceTemplate.setMarshaller(marshaller);
+    webServiceTemplate.setUnmarshaller(marshaller);
+    webServiceTemplate.setDefaultUri(soapEndpoint);
+    return webServiceTemplate;
+}
+```
+
+### 2. **Class Generation from WSDL**
+
+The Java classes for interacting with the SOAP service are generated automatically from the WSDL file of the SOAP service using Maven's `jaxws-maven-plugin`. The `pom.xml` is configured to download the WSDL and generate the appropriate Java classes.
+
+**Configuration in `pom.xml`:**
+```xml
+<plugin>
+    <groupId>com.sun.xml.ws</groupId>
+    <artifactId>jaxws-maven-plugin</artifactId>
+    <version>4.0.0</version>
+    <executions>
+        <execution>
+            <id>wsimport-calculator</id>
+            <goals>
+                <goal>wsimport</goal>
+            </goals>
+            <configuration>
+                <wsdlUrls>
+                    <wsdlUrl>http://www.dneonline.com/calculator.asmx?wsdl</wsdlUrl>
+                </wsdlUrls>
+                <packageName>com.example.soap.generated.calculator</packageName>
+                <sourceDestDir>${project.build.directory}/generated-sources/wsdl/calculator</sourceDestDir>
+                <keep>true</keep>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
+```
+
+This configuration downloads the WSDL from `http://www.dneonline.com/calculator.asmx?wsdl` and generates Java classes in the package `com.example.soap.generated.calculator`.
+
+### 3. **SOAP Operations**
+
+- **Add Operation**: Sends a request to the SOAP service to add two numbers.
+- **Subtract Operation**: Sends a request to subtract two numbers.
+- **Multiply Operation**: Sends a request to multiply two numbers.
+- **Divide Operation**: Sends a request to divide two numbers.
+
+These operations are performed by calling respective methods in the `SoapClientService` class. Each method marshals a request object, sends it to the SOAP service, and unmarshals the response.
+
+```java
+public Integer callAddOperation(Integer num1, Integer num2) {
+    Add request = new Add();
+    request.setIntA(num1);
+    request.setIntB(num2);
+    AddResponse response = (AddResponse) webServiceTemplate.marshalSendAndReceive(
+            soapEndpoint,
+            request,
+            new SoapActionCallback(SoapAction.ADD.getUrl())
+    );
+    return response.getAddResult();
+}
+```
+
+
+## Running the Application
 
 1. Clone the repository:
    ```bash
